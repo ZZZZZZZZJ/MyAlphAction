@@ -8,10 +8,10 @@ class Combined3dROIHeads(torch.nn.ModuleDict):
         super(Combined3dROIHeads, self).__init__(heads)
         self.cfg = cfg.clone()
 
-    def forward(self, slow_features, fast_features, boxes, objects=None, extras={}, part_forward=-1):
-        result, loss_action, accuracy_action = self.action(slow_features, fast_features, boxes, objects, extras)
+    def forward(self, slow_features, fast_features, boxes, objects=None, extras={}, pool = None, is_get_features = False, is_post_processing = False):
+        result, person_features = self.action(slow_features, fast_features, boxes, objects, extras, pool, is_get_features, is_post_processing)
 
-        return result, loss_action, accuracy_action
+        return result, person_features
 
     def c2_weight_mapping(self):
         weight_map = {}

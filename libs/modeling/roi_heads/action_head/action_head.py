@@ -4,7 +4,7 @@ from .roi_action_feature_extractor import make_roi_action_feature_extractor
 from .roi_action_predictors import make_roi_action_predictor
 from .inference import make_roi_action_post_processor
 from libs.modeling.utils import prepare_pooled_feature
-
+from libs.structures.bounding_box import BoxList
 
 class ROIActionHead(torch.nn.Module):
     """
@@ -17,20 +17,28 @@ class ROIActionHead(torch.nn.Module):
         self.predictor = make_roi_action_predictor(cfg, self.feature_extractor.dim_out)
         self.post_processor = make_roi_action_post_processor(cfg)
         self.test_ext = cfg.TEST.EXTEND_SCALE
+        self.size = cfg.DATALOADER.CROP_SIZE
 
-    def forward(self, slow_features, fast_features, boxes, objects=None, extras={}):
+    def forward(self, slow_features, fast_features, boxes, objects=None, extras={}, pool = None, is_get_features = False, is_post_processing = False):
         # In training stage, boxes are from gt.
         # In testing stage, boxes are detected by human detector and proposals should be
         # enlarged boxes.
-        #proposals = [box.extend(self.test_ext) for box in boxes]
-        proposals = boxes
+        if is_post_processing:
+            proposals = None
+        else:
+            proposals = [box.extend(self.test_ext) for box in boxes]
         
-        x, x_pooled, x_objects = self.feature_extractor(slow_features, fast_features, proposals, objects, extras)
+        x, person_features = self.feature_extractor(slow_features, fast_features, proposals, objects, extras, pool, is_get_features, is_post_processing)
+        
+        pooled_feature = prepare_pooled_feature(person_features, boxes)
+        
+        if is_get_features:
+            return None, pooled_feature
 
         action_logits = self.predictor(x)
 
         result = self.post_processor((action_logits,), boxes)
-        return result, x_pooled, x_objects
+        return result, pooled_feature
 
     def c2_weight_mapping(self):
         weight_map = {}

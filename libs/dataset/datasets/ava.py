@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from libs.structures.bounding_box import BoxList
 from collections import defaultdict
-from libs.utils.video_decode import av_decode_video, av_read_frames
+from libs.utils.video_decode import av_decode_video, av_read_frames, ava_read_frames
 
 import json
 
@@ -62,7 +62,7 @@ class NpBoxDict(object):
         return self.length
 
 class AVAVideoDataset(data.Dataset):
-    def __init__(self, video_root, ann_file, remove_clips_without_annotations, frame_span, box_file=None, eval_file_paths={},
+    def __init__(self, video_root, frames_root, ann_file, remove_clips_without_annotations, frame_span, box_file=None, eval_file_paths={},
                  box_thresh=0.0, action_thresh=0.0, transforms=None, object_file=None, object_transforms=None,):
 
         print('loading annotations into memory...')
@@ -72,6 +72,7 @@ class AVAVideoDataset(data.Dataset):
         print('Done (t={:0.2f}s)'.format(time.time() - tic))
 
         self.video_root = video_root
+        self.frames_root = frames_root
         self.transforms = transforms
         self.frame_span = frame_span
 
@@ -124,6 +125,7 @@ class AVAVideoDataset(data.Dataset):
         else:
             self.det_objects = None
 
+        print(object_transforms,'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         if object_transforms:
             self.object_transforms = object_transforms
         else:
@@ -139,6 +141,14 @@ class AVAVideoDataset(data.Dataset):
                 ] for clip_id in clip_ids
         }
         self.clips_info = NpInfoDict(clips_info, value_type=np.int32)
+        
+    def _get_filenames(self):
+        filenames = []
+        for i, (_, clip_info) in enumerate(self.clips_info):
+            mov_id, timestamp = clip_info
+            movie_id, movie_size = self.movie_info[mov_id]
+            filenames.append([movie_id, timestamp])
+        return filenames
 
 
     def __getitem__(self, idx):
@@ -151,6 +161,7 @@ class AVAVideoDataset(data.Dataset):
         movie_id, movie_size = self.movie_info[mov_id]
         video_data = self._decode_video_data(movie_id, timestamp)
         #video_data = self._read_video_data(movie_id, timestamp)
+        #video_data = self._read_frames_data(movie_id, timestamp)
 
         im_w, im_h = movie_size
 
@@ -159,13 +170,8 @@ class AVAVideoDataset(data.Dataset):
             # otherwise we will use only box file instead.
 
             boxes, packed_act = self.anns[idx]
-            #print(boxes.shape)
-            #print(packed_act.shape)
-            boxes = np.array([[0,0,im_w,im_h]])
             boxes_tensor = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1, 4)  # guard against no boxes
             
-            #print(boxes_tensor)
-            #print(im_w, im_h)
             boxes = BoxList(boxes_tensor, (im_w, im_h), mode="xywh").convert("xyxy")
 
             # Decode the packed bits from uint8 to one hot, since AVA has 80 classes,
@@ -173,11 +179,10 @@ class AVAVideoDataset(data.Dataset):
             one_hot_label = np.unpackbits(packed_act, axis=1)
             one_hot_label = torch.as_tensor(one_hot_label, dtype=torch.uint8)
 
-            boxes.add_field("labels", one_hot_label[0:1,:])
+            boxes.add_field("labels", one_hot_label)
 
         else:
             boxes, box_score = self.det_persons[idx]
-            boxes = np.array([[0,0,im_w,im_h]])
             boxes_tensor = torch.as_tensor(boxes).reshape(-1, 4)
             boxes = BoxList(boxes_tensor, (im_w, im_h), mode="xywh").convert("xyxy")
 
@@ -186,8 +191,10 @@ class AVAVideoDataset(data.Dataset):
         extras = {}
 
         if self.transforms is not None:
+            #video_data, boxes, ori_boxes, transform_randoms = self.transforms(video_data, boxes)
             video_data, boxes, transform_randoms = self.transforms(video_data, boxes)
             slow_video, fast_video = video_data
+           # print(slow_video.shape, fast_video.shape)
 
             objects = None
             if self.det_objects is not None:
@@ -199,7 +206,7 @@ class AVAVideoDataset(data.Dataset):
             extras["movie_id"] = movie_id
             extras["timestamp"] = timestamp
 
-            return slow_video, fast_video, boxes, objects, extras, idx
+            return slow_video, fast_video, boxes, objects, extras, idx#, ori_boxes
 
         return video_data, boxes, idx, movie_id, timestamp
 
@@ -247,8 +254,44 @@ class AVAVideoDataset(data.Dataset):
                 imgToBoxes[img_id].append(box)
         return imgToBoxes
     
+    def _read_frames_data(self, dirname, timestamp):
+        
+        def sec_to_frame(sec):
+            FPS = 30
+            return (sec - 900) * FPS
+        
+        frames_folder = os.path.join(self.frames_root, dirname)
+        right_span = self.frame_span//2
+        left_span = self.frame_span - right_span
+        
+        #load right
+        cur_frames = sec_to_frame(timestamp)
+        right_frames = []
+        while len(right_frames) < right_span:
+            frames_num = right_span - len(right_frames)
+            frames = ava_read_frames(frames_folder, cur_frames, frames_num, is_right = True)
+            if len(frames)==0:
+                raise RuntimeError("Video {} cannot be decoded.".format(frames_folder))
+            right_frames = right_frames+frames
+       
+        left_frames = []
+        while len(left_frames) < left_span:
+            frames_num = left_span - len(left_frames)
+            frames = ava_read_frames(frames_folder, cur_frames, frames_num, is_right = False)
+            if len(frames)==0:
+                raise RuntimeError("Video {} cannot be decoded.".format(frames_folder))
+            left_frames = frames+left_frames
+            
+        #adjust key frame to center, usually no need
+        min_frame_num = min(len(left_frames), len(right_frames))
+        frames = left_frames[-min_frame_num:] + right_frames[:min_frame_num]
+
+        video_data = np.stack(frames)
+        return video_data
+                
+    
     def _read_video_data(self, dirname, timestamp):
-        video_folder = os.path.join(self.video_root, '../clip_frames/',dirname)
+        video_folder = os.path.join(self.video_root, dirname)
         right_span = self.frame_span//2
         left_span = self.frame_span - right_span
         #load right

@@ -18,13 +18,13 @@ class DatasetCatalog(object):
         "ava_video_val_v2.2": {
             "video_root": "AVA/clips/trainval",
             "frames_root": "AVA/frames/",
-            "ann_file": "AVA/annotations/ava_val_v2.2_min.json",
+            "ann_file": "AVA/annotations_1/ava_val_v2.2_min.json",
 #            "ann_file": "AVA/boxes/ava_val_det_person_bbox.json",
             "box_file": "AVA/boxes/ava_val_det_person_bbox.json",
             "eval_file_paths": {
-                "csv_gt_file": "AVA/annotations/ava_val_v2.2.csv",
-                "labelmap_file": "AVA/annotations/ava_action_list_v2.2_for_activitynet_2019.pbtxt",
-                "exclusion_file": "AVA/annotations/ava_val_excluded_timestamps_v2.2.csv",
+                "csv_gt_file": "AVA/annotations_1/ava_val_v2.2.csv",
+                "labelmap_file": "AVA/annotations_1/ava_action_list_v2.2_for_activitynet_2019.pbtxt",
+                "exclusion_file": "AVA/annotations_1/ava_val_excluded_timestamps_v2.2.csv",
             },
             #"object_file": "AVA/boxes/ava_all_object_boxes.json",
             "object_file": "AVA/boxes/ava_val_det_object_bbox.json",

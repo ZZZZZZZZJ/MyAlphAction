@@ -5,10 +5,25 @@ from yacs.config import CfgNode as CN
 # -----------------------------------------------------------------------------
 
 _C = CN()
+_C.NUM_GPUS = 4
+_C.RNG_SEED = 1
+_C.SHARD_ID = 0
+_C.NUM_SHARDS = 1
+_C.OUTPUT_LOGFILE = "logging.log"
 
 _C.MODEL = CN()
 
 _C.MODEL.WEIGHT = ""
+
+# ---------------------------------------------------------------------------- #
+# Batch norm options
+# ---------------------------------------------------------------------------- #
+_C.BN = CN()
+_C.BN.EPSILON = 1e-5
+_C.BN.MOMENTUM = 0.1
+_C.BN.USE_PRECISE_STATS = False
+_C.BN.NUM_BATCHES_PRECISE = 200
+_C.BN.WEIGHT_DECAY = 0.0
 
 # -----------------------------------------------------------------------------
 # ROI action head config.
@@ -86,7 +101,7 @@ _C.DATALOADER.SIZE_DIVISIBILITY = 16
 # is compatible. This groups portrait images together, and landscape images
 # are not batched with portrait images.
 _C.DATALOADER.ASPECT_RATIO_GROUPING = True
-
+_C.DATALOADER.CROP_SIZE = (256,256)
 
 # ---------------------------------------------------------------------------- #
 # Backbone options
@@ -174,22 +189,24 @@ _C.AOG_STRUCTURE = CN()
 _C.AOG_STRUCTURE.ACTIVE = False
 _C.AOG_STRUCTURE.STRUCTURE = "serial"
 _C.AOG_STRUCTURE.MAX_PER_SEC = 5
-_C.AOG_STRUCTURE.MAX_PERSON = 25
+_C.AOG_STRUCTURE.MAX_PERSON = 15
 _C.AOG_STRUCTURE.DIM_IN = 2304
 _C.AOG_STRUCTURE.DIM_INNER = 512
-_C.AOG_STRUCTURE.DIM_OUT = 512
+_C.AOG_STRUCTURE.DIM_OUT = 1024
 _C.AOG_STRUCTURE.LENGTH = (30, 30)
 _C.AOG_STRUCTURE.MEMORY_RATE = 1
 _C.AOG_STRUCTURE.FUSION = "concat"
 _C.AOG_STRUCTURE.CONV_INIT_STD = 0.01
-_C.AOG_STRUCTURE.DROPOUT = 0.
+_C.AOG_STRUCTURE.DROPOUT = 0.2
+_C.AOG_STRUCTURE.REDUCE_DROPOUT = 0.
 _C.AOG_STRUCTURE.NO_BIAS = False
-_C.AOG_STRUCTURE.I_BLOCK_LIST = ['P', 'O', 'M', 'P', 'O', 'M']
 _C.AOG_STRUCTURE.LAYER_NORM = False
 _C.AOG_STRUCTURE.TEMPORAL_POSITION = True
 _C.AOG_STRUCTURE.ROI_DIM_REDUCE = True
 _C.AOG_STRUCTURE.USE_ZERO_INIT_CONV = True
-_C.AOG_STRUCTURE.MAX_OBJECT = 0
+_C.AOG_STRUCTURE.MAX_OBJECT = 5
+
+_C.AOG_STRUCTURE.MEMORY = False
 
 # ---------------------------------------------------------------------------- #
 # Specific solver options
@@ -198,12 +215,30 @@ _C.SOLVER = CN()
 # Number of video clips per batch
 # This is global, so if we have 8 GPUs and VIDEOS_PER_BATCH = 16, each GPU will
 # see 2 clips per batch
+_C.SOLVER.ACTIVE = True
 _C.SOLVER.VIDEOS_PER_BATCH = 16
 
 # Config used in inference.
 _C.SOLVER.EXTEND_SCALE = (0.1, 0.05)
 _C.SOLVER.BOX_THRESH = 0.8
 _C.SOLVER.ACTION_THRESH = 0.05
+
+_C.SOLVER.BASE_LR = 0.05
+_C.SOLVER.LR_POLICY = "steps_with_relative_lrs"
+_C.SOLVER.GAMMA = 0.1
+_C.SOLVER.STEP_SIZE = 1
+_C.SOLVER.STEPS = [0, 30, 32, 34, 36, 38]
+_C.SOLVER.LRS = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001]
+_C.SOLVER.MAX_EPOCH = 40
+_C.SOLVER.MOMENTUM = 0.9
+_C.SOLVER.DAMPENING = 0.0
+_C.SOLVER.NESTEROV = True
+_C.SOLVER.WEIGHT_DECAY = 1e-7
+_C.SOLVER.WARMUP_FACTOR = 0.1
+_C.SOLVER.WARMUP_EPOCHS = 5
+_C.SOLVER.WARMUP_START_LR = 0.000125
+_C.SOLVER.OPTIMIZING_METHOD = "sgd"
+_C.SOLVER.EVAL_PERIOD = 1
 
 # ---------------------------------------------------------------------------- #
 # Specific test options

@@ -1,4 +1,5 @@
 from . import video_transforms as T
+#from . import video_transforms_rescale as T
 from . import object_transforms as OT
 
 
@@ -8,6 +9,7 @@ def build_transforms(cfg, is_train=True):
     max_size = cfg.INPUT.MAX_SIZE_TEST
     flip_prob = 0
     slow_jitter = False
+    crop_size = cfg.DATALOADER.CROP_SIZE
 
     frame_num = cfg.INPUT.FRAME_NUM
     sample_rate = cfg.INPUT.FRAME_SAMPLE_RATE
@@ -24,6 +26,7 @@ def build_transforms(cfg, is_train=True):
         [
             T.TemporalCrop(frame_num, sample_rate),
             T.Resize(min_size, max_size),
+            #T.Crop_Resize(crop_size,1.5,False),
             T.RandomHorizontalFlip(flip_prob),
             T.ToTensor(),
             normalize_transform,

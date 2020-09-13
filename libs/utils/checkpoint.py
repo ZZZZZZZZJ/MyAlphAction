@@ -7,6 +7,7 @@ import torch
 from libs.utils.model_serialization import load_state_dict
 from libs.utils.c2_model_loading import load_c2_format
 from libs.structures.memory_pool import MemoryPool
+import libs.utils.distributed as du
 
 
 class Checkpointer(object):
@@ -24,19 +25,24 @@ class Checkpointer(object):
         self.scheduler = scheduler
         self.save_dir = save_dir
         self.save_to_disk = save_to_disk
+        self.epoch = 0
         if logger is None:
-            logger = logging.getLogger("AlphAction."+__name__)
+            logger = logging.getLogger(__name__)
         self.logger = logger
 
-    def save(self, name, **kwargs):
+    def save(self, name, cur_epoch, cfg, **kwargs):
         if not self.save_dir:
             return
 
         if not self.save_to_disk:
             return
+        
+        if not du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
+            return
 
         data = {}
         data["model"] = self.model.state_dict()
+        data["epoch"] = cur_epoch
         if self.optimizer is not None:
             data["optimizer"] = self.optimizer.state_dict()
         if self.scheduler is not None:
@@ -59,6 +65,10 @@ class Checkpointer(object):
         self.logger.info("Loading checkpoint from {}".format(f))
         checkpoint = self._load_file(f)
         self._load_model(checkpoint, no_head)
+        if "epoch" in checkpoint:
+            self.epoch = checkpoint['epoch']
+        else:
+            self.epoch = 1
         if "optimizer" in checkpoint and self.optimizer:
             if model_weight_only:
                 del checkpoint['optimizer']
@@ -81,6 +91,9 @@ class Checkpointer(object):
             checkpoint["person_pool"] = MemoryPool()
         # return any further checkpoint dataset
         return checkpoint
+    
+    def get_epoch(self):
+        return self.epoch
 
     def has_checkpoint(self):
         save_file = os.path.join(self.save_dir, "last_checkpoint")

@@ -8,6 +8,7 @@ class DatasetCatalog(object):
     DATASETS = {
         "ava_video_train_v2.2": {
             "video_root": "AVA/clips/trainval",
+            "frames_root": "AVA/frames/",
             "ann_file": "AVA/annotations_1/ava_train_v2.2_min.json",
             "box_file": "",
             "eval_file_paths": {},
@@ -15,6 +16,7 @@ class DatasetCatalog(object):
         },
         "ava_video_val_v2.2": {
             "video_root": "AVA/clips/trainval",
+            "frames_root": "AVA/frames/",
             "ann_file": "AVA/annotations_1/ava_val_v2.2_min.json",
             "box_file": "AVA/boxes/ava_val_det_person_bbox.json",
             "eval_file_paths": {
@@ -37,6 +39,7 @@ class DatasetCatalog(object):
                 box_file = os.path.join(data_dir, attrs["box_file"])
             args = dict(
                 video_root=os.path.join(data_dir, attrs["video_root"]),
+                frames_root=os.path.join(data_dir, attrs["frames_root"]),
                 ann_file=os.path.join(data_dir, attrs["ann_file"]),
                 box_file=box_file,
                 eval_file_paths={key: os.path.join(data_dir, attrs["eval_file_paths"][key]) for key in

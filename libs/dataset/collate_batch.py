@@ -1,4 +1,5 @@
 import math
+import torch
 
 
 def batch_different_videos(videos, size_divisible=0):
@@ -8,6 +9,12 @@ def batch_different_videos(videos, size_divisible=0):
     :return: batched videos as a single tensor
     '''
     assert isinstance(videos, (tuple, list))
+   # frames_list = []
+   # for i in range(len(videos)):
+   #     frames_list.append(videos[i])
+   # frames = torch.cat(frames_list,dim=0)
+   # print(frames.shape)
+   # return frames
     max_size = tuple(max(s) for s in zip(*[clip.shape for clip in videos]))
 
     if size_divisible > 0:
@@ -41,7 +48,12 @@ class BatchCollator(object):
         slow_clips = batch_different_videos(transposed_batch[0], self.size_divisible)
         fast_clips = batch_different_videos(transposed_batch[1], self.size_divisible)
         boxes = transposed_batch[2]
+        #boxes = []
+        #for i in range(len(transposed_batch[2])):
+        #    for j in range(len(transposed_batch[2][i])):
+        #        boxes.append(transposed_batch[2][i][j])
         objects = transposed_batch[3]
         extras = transposed_batch[4]
         clip_ids = transposed_batch[5]
-        return slow_clips, fast_clips, boxes, objects, extras, clip_ids
+    #    ori_boxes = transposed_batch[6]
+        return slow_clips, fast_clips, boxes, objects, extras, clip_ids#, ori_boxes

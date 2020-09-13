@@ -27,6 +27,9 @@ class MemoryPool(object):
         if isinstance(item, tuple) and len(item)==2:
             return (item[1] in self.cache[item[0]])
         return (item in self.cache)
+    
+    def len(self):
+        return len(self.cache)
 
     def items(self):
         return self.cache.items()

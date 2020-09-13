@@ -3,7 +3,6 @@ import copy
 
 import torch.utils.data
 from libs.utils.comm import get_world_size
-from libs.utils.IA_helper import has_object
 import libs.config.paths_catalog as paths_catalog
 
 from . import datasets as D
@@ -146,13 +145,13 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, fla
     aspect_grouping = [1] if cfg.DATALOADER.ASPECT_RATIO_GROUPING else []
 
     DatasetCatalog = paths_catalog.DatasetCatalog
-    #dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
-    dataset_list = cfg.DATASETS.TRAIN if flag else cfg.DATASETS.TEST
+    dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     # build dataset
     transforms = build_transforms(cfg, is_train)
     #if cfg.AOG_STRUCTURE.ACTIVE:
     object_transforms = build_object_transforms(cfg, is_train=is_train)
+    #print("!!!!!!!!!!!!!!", object_transforms)
     #else:
     #    object_transforms = None
     datasets = build_dataset(cfg, dataset_list, transforms, DatasetCatalog, is_train, object_transforms)
